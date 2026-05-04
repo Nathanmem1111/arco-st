@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCO-ST — Estimaciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f4fa; --surface:#fff; --surface2:#e8eef8; --border:#d0daea;
+    --accent:#1a4fd6; --accent-light:#e8effe; --text:#0f1c3f;
+    --muted:#6b7a99; --danger:#dc2626; --warn:#d97706; --success:#16a34a; --green-wa:#25d366;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(26,79,214,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(26,79,214,0.04) 1px,transparent 1px);background-size:36px 36px;pointer-events:none;z-index:0;}
+
+  /* LOADING */
+  #loadingScreen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem;}
+  .logo-big{font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:0.12em;color:var(--accent);}
+  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loadingScreen p{color:var(--muted);font-size:0.85rem;}
+
+  header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.93);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;box-shadow:0 1px 12px rgba(26,79,214,0.07);}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:0.12em;color:var(--accent);}
+  .logo span{color:var(--text);}
+  .header-right{display:flex;align-items:center;gap:1rem;}
+  .user-badge{display:flex;align-items:center;gap:0.5rem;background:var(--accent-light);border:1px solid rgba(26,79,214,0.2);border-radius:999px;padding:0.35rem 1rem;font-size:0.85rem;font-weight:600;color:var(--accent);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .btn-logout{background:none;border:1px solid var(--border);color:var(--muted);padding:0.35rem 0.9rem;border-radius:6px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+  .btn-logout:hover{border-color:var(--danger);color:var(--danger);}
+
+  main{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:3rem 2rem;}
+  .screen{display:none;animation:fadeIn 0.35s ease;}
+  .screen.active{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+  .auth-wrap{display:flex;justify-content:center;padding-top:2rem;}
+  .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 4px 40px rgba(26,79,214,0.08);}
+  .auth-title{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.08em;color:var(--accent);margin-bottom:0.3rem;}
+  .auth-sub{color:var(--muted);font-size:0.88rem;margin-bottom:2rem;}
+  .tabs{display:flex;gap:0.4rem;margin-bottom:1.8rem;background:var(--bg);border-radius:10px;padding:4px;}
+  .tab{flex:1;padding:0.55rem;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;cursor:pointer;border-radius:7px;transition:all 0.2s;}
+  .tab.active{background:var(--surface);color:var(--accent);font-weight:700;box-shadow:0 1px 6px rgba(26,79,214,0.1);}
+  .field{margin-bottom:1.2rem;}
+  .field label{display:block;font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem;}
+  .field input{width:100%;background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:0.75rem 1rem;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.92rem;outline:none;transition:border-color 0.2s,box-shadow 0.2s;}
+  .field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,79,214,0.1);}
+  .field input::placeholder{color:#b0bcd4;}
+  .phone-row{display:flex;gap:0.5rem;}
+  .phone-prefix{background:var(--accent-light);border:1.5px solid rgba(26,79,214,0.2);border-radius:10px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:0.85rem;font-weight:600;padding:0.75rem 0.9rem;display:flex;align-items:center;white-space:nowrap;flex-shrink:0;}
+  .role-pills{display:flex;gap:0.5rem;}
+  .role-pill{flex:1;padding:0.7rem;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;transition:all 0.2s;text-align:center;font-weight:500;}
+  .role-pill.selected{border-color:var(--accent);color:var(--accent);background:var(--accent-light);font-weight:700;}
+  .btn-primary{width:100%;padding:0.9rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.2s;margin-top:0.5rem;}
+  .btn-primary:hover{background:#1340b8;transform:translateY(-1px);box-shadow:0 6px 20px rgba(26,79,214,0.3);}
+  .btn-primary:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none;}
+
+  .dash-header{margin-bottom:2rem;}
+  .dash-title{font-family:'Bebas Neue',sans-serif;font-size:2.8rem;letter-spacing:0.06em;line-height:1;color:var(--text);}
+  .dash-title span{color:var(--accent);}
+  .dash-sub{color:var(--muted);font-size:0.88rem;margin-top:0.4rem;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1.5rem;box-shadow:0 2px 16px rgba(26,79,214,0.05);}
+  .card-header{padding:1.25rem 1.75rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to right,var(--accent-light),transparent);}
+  .card-header h2{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+  .date-badge{font-family:'JetBrains Mono',monospace;font-size:0.72rem;background:var(--accent);color:#fff;padding:0.25rem 0.85rem;border-radius:999px;font-weight:600;}
+  .count-badge{font-family:'JetBrains Mono',monospace;font-size:0.72rem;background:var(--accent);color:#fff;padding:0.22rem 0.65rem;border-radius:999px;font-weight:700;}
+
+  .empty-state{padding:3.5rem 2rem;text-align:center;}
+  .empty-icon{font-size:2.8rem;margin-bottom:0.75rem;opacity:0.3;}
+  .empty-state h3{font-size:0.95rem;font-weight:600;color:var(--muted);margin-bottom:0.3rem;}
+  .empty-state p{color:#b0bcd4;font-size:0.82rem;}
+
+  .file-info{padding:1.5rem 1.75rem;display:flex;align-items:center;gap:1.25rem;}
+  .file-icon{width:52px;height:52px;background:linear-gradient(135deg,#e8effe,#dbeafe);border:1.5px solid rgba(26,79,214,0.15);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;}
+  .file-meta{flex:1;min-width:0;}
+  .file-name{font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:0.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .file-date{font-size:0.82rem;color:var(--accent);font-weight:600;margin-bottom:0.15rem;}
+  .file-size{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);}
+  .btn-download{display:flex;align-items:center;gap:0.45rem;padding:0.65rem 1.3rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:0.85rem;font-weight:700;cursor:pointer;text-decoration:none;transition:all 0.2s;white-space:nowrap;}
+  .btn-download:hover{background:#1340b8;transform:translateY(-1px);}
+
+  .upload-zone{margin:0 1.75rem 1.75rem;border:2px dashed var(--border);border-radius:14px;padding:2rem;text-align:center;transition:all 0.25s;}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-light);}
+  .upload-icon{font-size:1.8rem;margin-bottom:0.6rem;}
+  .upload-zone p{color:var(--muted);font-size:0.85rem;}
+  .upload-zone strong{color:var(--accent);}
+  .btn-select{margin-top:0.85rem;display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.3rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.2s;}
+  .btn-select:hover{background:#1340b8;}
+
+  .notify-box{margin:0 1.75rem 1.75rem;background:var(--accent-light);border:1.5px solid rgba(26,79,214,0.15);border-radius:14px;padding:1.25rem 1.5rem;}
+  .notify-box .nb-title{font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:0.3rem;}
+  .notify-box .nb-sub{font-size:0.78rem;color:var(--muted);margin-bottom:0.85rem;}
+  .copy-row{display:flex;gap:0.5rem;}
+  .copy-input{flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:0.6rem 0.85rem;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);outline:none;}
+  .btn-copy{display:flex;align-items:center;gap:0.4rem;padding:0.6rem 1.1rem;background:var(--green-wa);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+  .btn-copy:hover{background:#1dba58;}
+  .btn-copy.copied{background:var(--success);}
+
+  .participant-item{display:flex;align-items:center;padding:0.9rem 1.75rem;border-bottom:1px solid var(--border);transition:background 0.15s;}
+  .participant-item:last-child{border-bottom:none;}
+  .participant-item:hover{background:var(--bg);}
+  .avatar{width:38px;height:38px;border-radius:50%;background:var(--accent-light);border:2px solid rgba(26,79,214,0.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;color:var(--accent);flex-shrink:0;margin-right:0.85rem;}
+  .participant-name{font-size:0.9rem;font-weight:600;color:var(--text);margin-bottom:0.15rem;}
+  .participant-phone{font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--muted);}
+
+  .view-banner{background:var(--accent-light);border:1.5px solid rgba(26,79,214,0.18);border-radius:12px;padding:0.9rem 1.25rem;display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;font-size:0.85rem;color:var(--accent);font-weight:500;}
+
+  .history-item{display:grid;grid-template-columns:42px 1fr auto;align-items:start;gap:0.85rem;padding:1rem 1.75rem;border-bottom:1px solid var(--border);transition:background 0.15s;}
+  .history-item:last-child{border-bottom:none;}
+  .history-item:hover{background:var(--bg);}
+  .h-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+  .h-icon.upload{background:#dbeafe;} .h-icon.register{background:#ede9fe;}
+  .h-action{font-size:0.88rem;font-weight:600;color:var(--text);margin-bottom:0.15rem;}
+  .h-detail{font-size:0.78rem;color:var(--muted);}
+  .h-time{font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--muted);white-space:nowrap;padding-top:3px;}
+  .no-participants{padding:2rem;text-align:center;color:var(--muted);font-size:0.88rem;}
+
+  .toast-container{position:fixed;bottom:2rem;right:2rem;z-index:999;display:flex;flex-direction:column;gap:0.5rem;}
+  .toast{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);padding:0.85rem 1.25rem;border-radius:10px;font-size:0.85rem;max-width:300px;box-shadow:0 4px 20px rgba(26,79,214,0.12);animation:slideIn 0.3s ease,fadeOut 0.3s ease 2.7s forwards;font-weight:500;}
+  .toast.success{border-left-color:var(--success);} .toast.error{border-left-color:var(--danger);} .toast.warn{border-left-color:var(--warn);}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes fadeOut{to{opacity:0;transform:translateX(100%)}}
+
+  @media(max-width:600px){
+    main{padding:1.5rem 1rem;}
+    .file-info{flex-wrap:wrap;} .btn-download{width:100%;justify-content:center;}
+    .copy-row{flex-direction:column;}
+    .history-item{grid-template-columns:36px 1fr;} .h-time{grid-column:2;}
+  }
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <div class="logo-big">ARCO<span style="color:#0f1c3f">-ST</span></div>
+  <div class="spinner"></div>
+  <p id="loadingMsg">Conectando...</p>
+</div>
+
+<header>
+  <div class="logo">ARCO<span>-ST</span></div>
+  <div class="header-right" id="headerRight" style="display:none">
+    <div class="user-badge"><div class="dot"></div><span id="headerName">—</span></div>
+    <button class="btn-logout" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<main>
+  <!-- AUTH -->
+  <div class="screen" id="authScreen">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-title">Bienvenido</div>
+        <div class="auth-sub">Plataforma de estimaciones · ARCO-ST</div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('login')">Iniciar sesión</button>
+          <button class="tab" onclick="switchTab('register')">Registrarse</button>
+        </div>
+        <div id="loginForm">
+          <div class="field"><label>Correo electrónico</label><input type="email" id="loginEmail" placeholder="tu@correo.com"></div>
+          <div class="field"><label>Contraseña</label><input type="text" id="loginPass" placeholder="Tu contraseña"></div>
+          <button class="btn-primary" id="loginBtn" onclick="login()">Entrar →</button>
+        </div>
+        <div id="registerForm" style="display:none">
+          <div class="field"><label>Nombre completo</label><input type="text" id="regName" placeholder="Ej. Carlos Mendoza"></div>
+          <div class="field"><label>Correo electrónico</label><input type="email" id="regEmail" placeholder="tu@correo.com"></div>
+          <div class="field">
+            <label>Número de WhatsApp</label>
+            <div class="phone-row">
+              <div class="phone-prefix">🇲🇽 +52</div>
+              <input type="tel" id="regPhone" placeholder="5512345678" style="flex:1">
+            </div>
+          </div>
+          <div class="field">
+            <label>Rol en la obra</label>
+            <div class="role-pills">
+              <button class="role-pill selected" id="pillAdmin" onclick="selectRole('admin')">⚙️ Administrador</button>
+              <button class="role-pill" id="pillParticipant" onclick="selectRole('participante')">👁 Participante</button>
+            </div>
+          </div>
+          <div class="field"><label>Contraseña</label><input type="text" id="regPass" placeholder="Mínimo 6 caracteres"></div>
+          <button class="btn-primary" id="registerBtn" onclick="register()">Crear cuenta →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="screen" id="dashScreen">
+    <div class="dash-header">
+      <div class="dash-title">ESTIMACIONES<br><span>DE OBRA</span></div>
+      <div class="dash-sub">ARCO-ST · Plataforma de seguimiento documental</div>
+    </div>
+
+    <div class="view-banner" id="viewBanner" style="display:none">
+      ℹ️ &nbsp;Estás en modo <strong>&nbsp;participante</strong>. Puedes ver y descargar el documento.
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>📊 Documento de estimaciones</h2>
+        <span class="date-badge" id="dateBadge">Sin documento</span>
+      </div>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">📂</div>
+        <h3>No hay ningún documento subido aún</h3>
+        <p>El administrador debe subir el Excel de estimaciones</p>
+      </div>
+      <div class="file-info" id="fileInfo" style="display:none">
+        <div class="file-icon">📊</div>
+        <div class="file-meta">
+          <div class="file-name" id="fileName">—</div>
+          <div class="file-date" id="fileDate">—</div>
+          <div class="file-size" id="fileSize">—</div>
+        </div>
+        <a class="btn-download" id="downloadBtn" href="#" download>⬇ Descargar</a>
+      </div>
+      <input type="file" accept=".xlsx,.xls,.csv" id="fileInput" style="display:none" onchange="handleFileUpload(this)">
+      <div class="upload-zone" id="uploadZone" style="display:none">
+        <div class="upload-icon">📤</div>
+        <p><strong>Arrastra el Excel aquí</strong></p>
+        <p style="margin-top:0.3rem;font-size:0.75rem">o usa el botón</p>
+        <button class="btn-select" onclick="document.getElementById('fileInput').click()">📁 Seleccionar archivo</button>
+        <p style="margin-top:0.65rem;font-size:0.72rem;color:#b0bcd4">.xlsx · .xls · .csv</p>
+      </div>
+      <div class="notify-box" id="notifyBox" style="display:none">
+        <div class="nb-title">📲 Notificar a participantes</div>
+        <div class="nb-sub">Copia este mensaje y pégalo en tu grupo de WhatsApp</div>
+        <div class="copy-row">
+          <input class="copy-input" id="copyText" readonly>
+          <button class="btn-copy" id="copyBtn" onclick="copyMessage()">📋 Copiar mensaje</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="participantsSection" style="display:none">
+      <div class="card-header">
+        <h2>👥 Participantes registrados</h2>
+        <span class="count-badge" id="countBadge">0</span>
+      </div>
+      <div id="participantList"><div class="no-participants">Ningún participante registrado aún</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h2>🕓 Historial de actividad</h2></div>
+      <div id="historyList"><div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem">Sin actividad registrada</div></div>
+    </div>
+  </div>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ================================================================
+// JSONBIN CONFIG
+// ================================================================
+const API_KEY = '$2a$10$d8OlAwfORoONzMJZZ3uB3.d9bIJUCtMhla5jjFbjtZ5Yw6v8LeJzS';
+const BIN_KEY = 'arcost_binid';
+let BIN_ID    = localStorage.getItem(BIN_KEY) || null;
+
+let DB = { users:{}, file:null, history:[] };
+let currentUser  = null;
+let selectedRole = 'admin';
+let syncInterval = null;
+
+async function loadDB(){
+  if(!BIN_ID){
+    // Crear bin nuevo
+    const r = await fetch('https://api.jsonbin.io/v3/b', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Access-Key':API_KEY,'X-Bin-Name':'arcost-db','X-Bin-Private':'false'},
+      body: JSON.stringify(DB)
+    });
+    const d = await r.json();
+    BIN_ID = d.metadata.id;
+    localStorage.setItem(BIN_KEY, BIN_ID);
+    return DB;
+  }
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+    headers:{'X-Access-Key':API_KEY}
+  });
+  const d = await r.json();
+  return d.record;
+}
+
+async function saveDB(){
+  await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Access-Key':API_KEY},
+    body: JSON.stringify(DB)
+  });
+}
+
+// ================================================================
+// INICIO
+// ================================================================
+async function init(){
+  setLoading(true, 'Conectando...');
+  try {
+    DB = await loadDB();
+  } catch(e){
+    setLoading(false);
+    toast('Error de conexión. Verifica tu internet','error');
+    document.getElementById('authScreen').classList.add('active');
+    return;
+  }
+
+  const savedEmail = localStorage.getItem('arcost_session');
+  if(savedEmail && DB.users[savedEmail]){
+    currentUser = DB.users[savedEmail];
+    setLoading(false);
+    renderDash();
+    startSync();
+    return;
+  }
+
+  setLoading(false);
+  document.getElementById('authScreen').classList.add('active');
+}
+
+function setLoading(show, msg=''){
+  const s = document.getElementById('loadingScreen');
+  s.style.display = show ? 'flex' : 'none';
+  if(msg) document.getElementById('loadingMsg').textContent = msg;
+}
+
+function startSync(){
+  if(syncInterval) clearInterval(syncInterval);
+  syncInterval = setInterval(async()=>{
+    try{
+      const data = await loadDB();
+      if(data){ DB=data; renderFile(); renderHistory(); if(currentUser.role==='admin') renderParticipants(); }
+    }catch(e){}
+  }, 15000);
+}
+
+// ================================================================
+// AUTH
+// ================================================================
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tab==='login'?i===0:i===1));
+  document.getElementById('loginForm').style.display=tab==='login'?'block':'none';
+  document.getElementById('registerForm').style.display=tab==='register'?'block':'none';
+}
+
+function selectRole(role){
+  selectedRole=role;
+  document.getElementById('pillAdmin').classList.toggle('selected',role==='admin');
+  document.getElementById('pillParticipant').classList.toggle('selected',role==='participante');
+}
+
+async function register(){
+  const name  = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const phone = document.getElementById('regPhone').value.trim().replace(/\D/g,'');
+  const pass  = document.getElementById('regPass').value.trim();
+  if(!name||!email||!phone||!pass) return toast('Completa todos los campos','error');
+  if(pass.length<6) return toast('La contraseña debe tener al menos 6 caracteres','error');
+  if(phone.length!==10) return toast('Ingresa exactamente 10 dígitos','error');
+
+  const btn = document.getElementById('registerBtn');
+  btn.disabled=true; btn.textContent='Guardando...';
+
+  try {
+    DB = await loadDB(); // refrescar antes de escribir
+    if(DB.users[email]){ btn.disabled=false; btn.textContent='Crear cuenta →'; return toast('Este correo ya está registrado','error'); }
+    if(selectedRole==='admin' && Object.values(DB.users).some(u=>u.role==='admin')){ btn.disabled=false; btn.textContent='Crear cuenta →'; return toast('Ya existe un administrador','warn'); }
+    DB.users[email]={name,email,phone:'52'+phone,role:selectedRole,pass};
+    addHistoryItem('register',`${name} se registró como ${selectedRole}`,name);
+    await saveDB();
+    toast('Cuenta creada. Inicia sesión','success');
+    switchTab('login');
+    document.getElementById('loginEmail').value=email;
+  } catch(e){ toast('Error de conexión','error'); }
+
+  btn.disabled=false; btn.textContent='Crear cuenta →';
+}
+
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass  = document.getElementById('loginPass').value.trim();
+  const btn   = document.getElementById('loginBtn');
+  btn.disabled=true; btn.textContent='Verificando...';
+
+  try {
+    DB = await loadDB();
+    const user = DB.users[email];
+    if(!user){ btn.disabled=false; btn.textContent='Entrar →'; return toast('Correo no encontrado','error'); }
+    if(user.pass!==pass){ btn.disabled=false; btn.textContent='Entrar →'; return toast('Contraseña incorrecta','error'); }
+    currentUser = user;
+    localStorage.setItem('arcost_session', email);
+    btn.disabled=false; btn.textContent='Entrar →';
+    renderDash();
+    startSync();
+  } catch(e){ btn.disabled=false; btn.textContent='Entrar →'; toast('Error de conexión','error'); }
+}
+
+function logout(){
+  currentUser=null;
+  if(syncInterval) clearInterval(syncInterval);
+  localStorage.removeItem('arcost_session');
+  document.getElementById('authScreen').classList.add('active');
+  document.getElementById('dashScreen').classList.remove('active');
+  document.getElementById('headerRight').style.display='none';
+}
+
+// ================================================================
+// DASHBOARD
+// ================================================================
+function renderDash(){
+  document.getElementById('authScreen').classList.remove('active');
+  document.getElementById('dashScreen').classList.add('active');
+  document.getElementById('headerRight').style.display='flex';
+  document.getElementById('headerName').textContent=currentUser.name;
+  const isAdmin=currentUser.role==='admin';
+  document.getElementById('viewBanner').style.display=isAdmin?'none':'flex';
+  document.getElementById('uploadZone').style.display=isAdmin?'block':'none';
+  document.getElementById('participantsSection').style.display=isAdmin?'block':'none';
+  renderFile();
+  if(isAdmin) renderParticipants();
+  renderHistory();
+}
+
+function renderFile(){
+  const file=DB.file;
+  const isAdmin=currentUser&&currentUser.role==='admin';
+  const empty=document.getElementById('emptyState');
+  const info=document.getElementById('fileInfo');
+  const nb=document.getElementById('notifyBox');
+  if(!file){
+    empty.style.display='block'; info.style.display='none'; nb.style.display='none';
+    document.getElementById('dateBadge').textContent='Sin documento'; return;
+  }
+  empty.style.display='none'; info.style.display='flex';
+  document.getElementById('fileName').textContent=file.name;
+  document.getElementById('fileDate').textContent='📅 Actualizado: '+file.date;
+  document.getElementById('fileSize').textContent=file.size;
+  document.getElementById('dateBadge').textContent=file.date;
+  const a=document.getElementById('downloadBtn');
+  a.href=file.dataUrl; a.download=file.name;
+  if(isAdmin){
+    nb.style.display='block';
+    document.getElementById('copyText').value=`📊 *ARCO-ST* — El documento de estimaciones fue actualizado.\n\n📅 ${file.date}\n📁 ${file.name}\n\n✅ Entra a la plataforma para descargarlo:\nhttps://arco-1.github.io/arco-st/ARCO-ST%20(10).html`;
+  } else { nb.style.display='none'; }
+}
+
+function renderParticipants(){
+  const parts=Object.values(DB.users).filter(u=>u.role==='participante');
+  document.getElementById('countBadge').textContent=parts.length;
+  const list=document.getElementById('participantList');
+  if(!parts.length){ list.innerHTML='<div class="no-participants">Ningún participante registrado aún</div>'; return; }
+  list.innerHTML=parts.map(p=>`
+    <div class="participant-item">
+      <div class="avatar">${p.name.charAt(0).toUpperCase()}</div>
+      <div><div class="participant-name">${p.name}</div><div class="participant-phone">+${p.phone}</div></div>
+    </div>`).join('');
+}
+
+function copyMessage(){
+  const text=document.getElementById('copyText').value;
+  const btn=document.getElementById('copyBtn');
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✅ Copiado'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='📋 Copiar mensaje'; btn.classList.remove('copied'); },2500);
+    toast('Mensaje copiado — pégalo en tu grupo de WhatsApp','success');
+  }).catch(()=>{
+    document.getElementById('copyText').select();
+    document.execCommand('copy');
+    btn.textContent='✅ Copiado'; btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='📋 Copiar mensaje'; btn.classList.remove('copied'); },2500);
+    toast('Mensaje copiado','success');
+  });
+}
+
+// ================================================================
+// FILE UPLOAD
+// ================================================================
+function handleFileUpload(input){ const f=input.files[0]; if(!f) return; processFile(f); input.value=''; }
+
+async function processFile(file){
+  const valid=['.xlsx','.xls','.csv'].some(t=>file.name.toLowerCase().endsWith(t));
+  if(!valid) return toast('Solo se aceptan .xlsx, .xls o .csv','error');
+  setLoading(true,'Subiendo documento...');
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const sizeKB=(file.size/1024).toFixed(1)+' KB';
+    const version=(DB.file?DB.file.version:0)+1;
+    DB.file={name:file.name,dataUrl:e.target.result,size:sizeKB,date:now,version};
+    addHistoryItem('upload',`Documento actualizado: ${file.name}`,currentUser.name);
+    try{
+      await saveDB();
+      setLoading(false);
+      renderFile(); renderHistory();
+      toast('✅ Documento subido y visible para todos','success');
+    }catch(e){ setLoading(false); toast('Error al subir','error'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  init();
+  const zone=document.getElementById('uploadZone');
+  zone.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();zone.classList.add('drag-over');});
+  zone.addEventListener('dragleave',e=>{e.stopPropagation();zone.classList.remove('drag-over');});
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();e.stopPropagation();zone.classList.remove('drag-over');
+    if(!currentUser||currentUser.role!=='admin') return;
+    const f=e.dataTransfer.files[0]; if(f) processFile(f);
+  });
+});
+
+// ================================================================
+// HISTORIAL
+// ================================================================
+const ICONS={upload:{emoji:'📤',cls:'upload'},register:{emoji:'👤',cls:'register'}};
+
+function addHistoryItem(type,detail,who){
+  const now=new Date().toLocaleString('es-MX',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  DB.history.unshift({type,detail,who,time:now});
+  if(DB.history.length>30) DB.history.pop();
+}
+
+function renderHistory(){
+  const list=document.getElementById('historyList');
+  if(!DB.history.length){ list.innerHTML='<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem">Sin actividad registrada</div>'; return; }
+  list.innerHTML=DB.history.map(h=>{
+    const icon=ICONS[h.type]||{emoji:'📌',cls:'register'};
+    return `<div class="history-item">
+      <div class="h-icon ${icon.cls}">${icon.emoji}</div>
+      <div><div class="h-action">${h.detail}</div><div class="h-detail">Por: ${h.who||'—'}</div></div>
+      <div class="h-time">${h.time}</div>
+    </div>`;
+  }).join('');
+}
+
+// ================================================================
+// TOAST
+// ================================================================
+function toast(msg,type='success'){
+  const c=document.getElementById('toastContainer');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`; t.textContent=msg; c.appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+</script>
+</body>
+</html>
